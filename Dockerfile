@@ -51,10 +51,15 @@ FROM python-base AS production
 
 ENV GHOSTFOLIO_BASE_URL="https://ghostfol.io"
 
+RUN apt-get update && apt-get install -y cron && apt-get clean
+
 COPY --from=builder-base $VIRTUAL_ENV $VIRTUAL_ENV
 
 WORKDIR /app
 
 COPY src/ghostcompanion/ ghostcompanion/
+COPY entrypoint.sh /entrypoint.sh
 
-CMD ["python", "ghostcompanion/main.py"]
+RUN chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]
