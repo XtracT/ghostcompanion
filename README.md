@@ -17,16 +17,47 @@ Currently implemented for [Coinbase](https://coinbase.com),
 <br />
 <br />
 [Getting Started](#getting-started) •
-[Report Bug](https://github.com/OliRafa/ghostcompanion/issues/new?labels=bug&template=bug-report---.md) •
-[Request Feature](https://github.com/OliRafa/ghostcompanion/issues/new?labels=enhancement&template=feature-request---.md) •
+[About this fork](#about-this-fork) •
+[Report Bug](https://github.com/XtracT/ghostcompanion/issues/new?labels=bug) •
+[Request Feature](https://github.com/XtracT/ghostcompanion/issues/new?labels=enhancement) •
 [Roadmap](#roadmap)
 </div>
+
+## About this fork
+
+This is a fork of [**OliRafa/ghostcompanion**](https://github.com/OliRafa/ghostcompanion),
+created and authored by **Rafael Oliveira** ([@OliRafa](https://github.com/OliRafa)).
+All credit for the original design, architecture, and feature set belongs to him.
+
+The original project ships as a one-shot container: it runs once, exports
+the data, and exits, relying on an external scheduler (e.g.
+[Ofelia](https://github.com/mcuadros/ofelia)) to trigger periodic runs.
+This fork keeps that as the default behaviour and adds an **optional
+built-in cron scheduler** so the same image can also run as a continuous
+service, controlled by the [`CRON_SCHEDULE`](#environment-variables)
+environment variable. No external scheduler is needed in that mode.
+
+The default `docker-compose.yml` is unchanged from upstream (one-shot +
+external scheduler). To use the built-in scheduler instead, run
+`docker compose -f docker-compose.cron.yml up -d`; see
+[Docker Compose](#docker-compose).
+
+All changes made in this fork are confined to the Docker runtime
+(`Dockerfile`, `entrypoint.sh`, `docker-compose.cron.yml`, and this README).
+The application code is unchanged from upstream. If the upstream project
+ever adopts a built-in scheduler, this fork will likely be retired in
+favour of it.
+
+> 💬 Have an idea or found a bug specific to this fork? Please open an issue
+> [here](https://github.com/XtracT/ghostcompanion/issues), not on the upstream
+> repository.
 
 <!-- TABLE OF CONTENTS -->
 <details>
   <summary>Table of Contents</summary>
 <!-- mtoc-start -->
 
+* [About this fork](#about-this-fork)
 * [Getting Started](#getting-started)
   * [Environment Variables](#environment-variables)
   * [Docker](#docker)
@@ -75,6 +106,7 @@ Start by setting up the appropriate environment variables, listed below.
 | `TASTYTRADE_CLIENT_SECRET` | `string`            |                       | The _Tastytrade_ Client Secret.                                                                                                                                              |
 | `TASTYTRADE_REFRESH_TOKEN` | `string`            |                       | The _Tastytrade_ Refresh Token.                                                                                                                                              |
 | `LOG_LEVEL`                | `string` (optional) | `INFO`                | Logging verbosity: DEBUG, INFO, WARNING, ERROR, or CRITICAL. |
+| `CRON_SCHEDULE`            | `string` (optional) |                       | When set, switches the container into service mode: it runs continuously and executes GhostCompanion on the given cron schedule (e.g. `0 8 * * *`, `@weekly`). Leave unset for one-shot mode. Only used with `docker-compose.cron.yml`. |
 
 For how to generate the TastyTrade variables, please refer to [this documentation](https://tastyworks-api.readthedocs.io/en/latest/sessions.html).
 For how to generate the Interactive Brokers variables, please refer to
@@ -110,11 +142,21 @@ For that, two approaches are presented, deploying using
 
 ### Docker Compose
 
-The plugin was developed without a scheduler (like Cron) by design,
-so another tool is needed for that.
-We suggest using [Ofelia](https://github.com/mcuadros/ofelia),
-and that's what we have in the provided
-[Docker Compose file](https://github.com/OliRafa/ghostcompanion/blob/main/docker-compose.yml).
+Two presets are provided:
+
+- **`docker-compose.yml`** (default, unchanged from upstream): one-shot
+  mode. The container runs GhostCompanion once and exits, scheduled by
+  the bundled [Ofelia](https://github.com/mcuadros/ofelia) sidecar
+  (`@weekly` by default).
+- **`docker-compose.cron.yml`** (this fork): service mode. The container
+  runs continuously and executes GhostCompanion on the
+  [`CRON_SCHEDULE`](#environment-variables) environment variable, set to
+  daily at 8am by default. No external scheduler is needed.
+
+> ⚠️ Only set `CRON_SCHEDULE` when using `docker-compose.cron.yml`.
+> Setting it in `.env` while running the default compose file would put
+> the one-shot container into service mode and the Ofelia sidecar would
+> no longer be the trigger.
 
 First, clone the repo:
 
@@ -132,13 +174,19 @@ Then, you'll need a `.env` file with the
 [environment variables](#environment-variables) set.
 A example file can be found [here](https://github.com/OliRafa/ghostcompanion/blob/main/.env.example).
 
-With everything ready, run the following command:
+With everything ready, run one of:
 
 ```sh
+# Default: one-shot mode scheduled by Ofelia (weekly)
 docker compose up -d
+
+# Fork: service mode with the built-in cron scheduler
+docker compose -f docker-compose.cron.yml up -d
 ```
 
-It will deploy it in your Docker Compose infrastructure, running weekly by default.
+The default deploy runs GhostCompanion once a week via Ofelia. The cron
+preset runs it continuously on the `CRON_SCHEDULE` (daily at 8am by
+default; override in `.env`).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -288,6 +336,10 @@ cloning to enable the hooks; run `./scripts/ci.sh` any time to reproduce CI.
 
 ## Acknowledgments
 
+* **Rafael Oliveira ([@OliRafa](https://github.com/OliRafa))** for creating
+  the original [GhostCompanion](https://github.com/OliRafa/ghostcompanion)
+  project. This fork builds on his work without modifying the application
+  code itself.
 * [Ghostfolio](https://github.com/ghostfolio/ghostfolio) for being an amazing tool!
 * [Interactive Brokers (IBKR)](https://www.interactivebrokers.com) for the API and
 [agusalex/ibflex](https://github.com/agusalex/ibflex)
@@ -311,10 +363,13 @@ for more information.
 
 ---
 
-> Rafael Oliveira &nbsp;&middot;&nbsp;
+> **Original author:** Rafael Oliveira &nbsp;&middot;&nbsp;
 > [olirafa.github.io](https://olirafa.github.io) &nbsp;&middot;&nbsp;
 > GitHub [@OliRafa](https://github.com/OliRafa) &nbsp;&middot;&nbsp;
 > LinkedIn [@OliRafa](https://www.linkedin.com/in/OliRafa)
+>
+> **Fork maintained by:** XtracT &nbsp;&middot;&nbsp;
+> GitHub [@XtracT](https://github.com/XtracT)
 
 <!-- MARKDOWN LINKS & IMAGES -->
 [buy-me-a-coffee-shield]: https://img.shields.io/badge/buy_me_a_coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black
