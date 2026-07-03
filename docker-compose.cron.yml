@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  ghostcompanion:
+    build: .
+    container_name: ghostcompanion
+    restart: unless-stopped
+    env_file:
+      .env
+    environment:
+      CRON_SCHEDULE: "0 8 * * *"
